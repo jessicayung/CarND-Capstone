@@ -81,12 +81,12 @@ class WaypointUpdater(object):
         idClosest = 0
 
         #rospy.loginfo('[closestWaypointId] ==> ')
-        for i in range(len(self.map_waypoints)):
-            waypoint = self.map_waypoints[i]
-            dist = self.distance_from_waypoint(waypoint)
-            if dist < closestLen:
-                closestLen = dist
-                idClosest = idClosest
+        # for i in range(len(self.map_waypoints)):
+        #     waypoint = self.map_waypoints[i]
+        #     dist = self.distance_from_waypoint(waypoint)
+        #     if dist < closestLen:
+        #         closestLen = dist
+        #         idClosest = idClosest
             #rospy.loginfo('[closestWaypointId] - waypoint %s %s %s %s', 
             #              i,
             #              waypoint.pose.pose.position.x,
