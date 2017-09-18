@@ -234,14 +234,14 @@ class TLDetector(object):
 
         # TODO: now get the state given the light object
         light_positions = self.config['light_positions']
-        rospy.logerr('Light Positions')
-        rospy.logerr(light_positions)
-        rospy.logerr('Car closest waypoint')
-        rospy.logerr(c_wp)
-        rospy.logerr('Light closest waypoint ' +
-                     '(distance to car, waypoint idx, light obj)')
-        rospy.logerr(l_wp)
-        rospy.logerr('')
+        #rospy.logerr('Light Positions')
+        #rospy.logerr(light_positions)
+        #rospy.logerr('Car closest waypoint')
+        #rospy.logerr(c_wp)
+        #rospy.logerr('Light closest waypoint ' +
+        #             '(distance to car, waypoint idx, light obj)')
+        #rospy.logerr(l_wp)
+        #rospy.logerr('')
         tl_state = self.get_light_state(l_wp[2])
 
         return idx, tl_state
