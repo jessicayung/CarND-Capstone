@@ -21,8 +21,6 @@ Once you have created dbw_node, you will update this node to use the status of t
 Please note that our simulator also provides the exact location of traffic lights and their
 current status in `/vehicle/traffic_lights` message. You can use this message to build this node
 as well as to verify your TL classifier.
-
-TODO (for Yousuf and Aaron): Stopline location for each traffic light.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
@@ -68,61 +66,6 @@ class WaypointUpdater(object):
                          (yw - yc)*(yw - yc) +
                          (zw - zc)*(zw - zc))
 
-    def closestWaypointId(self):
-        """
-            Find the closest point on the map to the current
-            vehicle location
-            NOTE: Currently iterate through the entire map
-            => Need a more clever method for realtime operation
-            Subsamplig on init + Sliding window, etc...
-        """
-        closestLen = 100000
-        idClosest = 0
-
-        #rospy.loginfo('[closestWaypointId] ==> ')
-        # for i in range(len(self.base_waypoints)):
-        #     waypoint = self.base_waypoints[i]
-        #     dist = self.distance_from_waypoint(waypoint)
-        #     if dist < closestLen:
-        #         closestLen = dist
-        #         idClosest = idClosest
-            #rospy.loginfo('[closestWaypointId] - waypoint %s %s %s %s',
-            #              i,
-            #              waypoint.pose.pose.position.x,
-            #              waypoint.pose.pose.position.y,
-            #              waypoint.pose.pose.position.z)
-
-        return idClosest
-
-    def nextWaypoint(self):
-        """
-            Find the next waypoint ahead of the vehicle
-        """
-        closestId = self.closestWaypointId()
-        closestWaypoint = self.base_waypoints[closestId]
-
-        map_x = closestWaypoint.pose.pose.position.x
-        map_y = closestWaypoint.pose.pose.position.y
-
-        car_x = self.pose.position.x
-        car_y = self.pose.position.y
-
-        heading = math.atan2((map_y - car_y), (map_x - car_x))
-
-        _quaternion = (self.pose.orientation.x,
-                      self.pose.orientation.y,
-                      self.pose.orientation.z,
-                      self.pose.orientation.w)
-        euler = tf.transformations.euler_from_quaternion(_quaternion)
-        theta = euler[2]
-
-        angle = math.fabs(theta - heading)
-
-        if angle > (math.pi/4.0):
-            closestId += 1
-
-        return closestId
-
     def pose_cb(self, msg):
         """
             /current_pose callback function
@@ -150,7 +93,7 @@ class WaypointUpdater(object):
         c_y = self.pose.position.y
         c_o = self.pose.orientation
         c_q = (c_o.x, c_o.y, c_o.z, c_o.w)
-        _, _, c_w = tf.transformations.euler_from_quaternion(c_q)
+        _, _, c_t = tf.transformations.euler_from_quaternion(c_q)
 
         waypoints_ahead = []
         for wp_i in range(len(self.base_waypoints)):
@@ -158,8 +101,8 @@ class WaypointUpdater(object):
             w = self.base_waypoints[wp_i]
             w_x = w.pose.pose.position.x
             w_y = w.pose.pose.position.y
-            w_ahead = ((w_x - c_x) * math.cos(c_w) +
-                       (w_y - c_y) * math.sin(c_w)) > 0
+            w_ahead = ((w_x - c_x) * math.cos(c_t) +
+                       (w_y - c_y) * math.sin(c_t)) > 0
 
             if not w_ahead:
                 continue
@@ -175,11 +118,11 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(lane)
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message. Implement
+        # TODO: Callback for /traffic_waypoint message.
         pass
 
     def obstacle_cb(self, msg):
-        # TODO: Callback for /obstacle_waypoint message. We will implement it later
+        # TODO: Callback for /obstacle_waypoint message.
         pass
 
     def get_waypoint_velocity(self, waypoint):
