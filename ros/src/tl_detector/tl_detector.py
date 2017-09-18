@@ -61,7 +61,7 @@ class TLDetector(object):
         rospy.spin()
 
     def pose_cb(self, msg):
-        self.pose = msg
+        self.pose = msg.pose
 
     def waypoints_cb(self, lane):
         self.waypoints = lane.waypoints
@@ -205,11 +205,11 @@ class TLDetector(object):
             return idx, tl_state
 
         # get current position and yaw of the car
-        c_wp = self.get_closest_waypoint(self.pose.pose)
+        c_wp = self.get_closest_waypoint(self.pose)
 
-        c_x = self.pose.pose.position.x
-        c_y = self.pose.pose.position.y
-        c_o = self.pose.pose.orientation
+        c_x = self.pose.position.x
+        c_y = self.pose.position.y
+        c_o = self.pose.orientation
         c_q = (c_o.x, c_o.y, c_o.z, c_o.w)
         _, _, c_w = tf.transformations.euler_from_quaternion(c_q)
 
