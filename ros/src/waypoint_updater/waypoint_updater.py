@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from std_msgs.msg import Int32
 from styx_msgs.msg import Lane, Waypoint
+from operator import itemgetter
 
 import tf
 import math
@@ -38,14 +39,12 @@ class WaypointUpdater(object):
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
-        # TODO: Add other member variables you need below
-
         # Current pose of the vehicle updated at an unknown rate
-        self.currentPose = None
+        self.pose = None
 
         # Part of the complete waypoints retrived from /base_waypoints
         # Note: In total /base_waypoints has 10902 data points
-        self.map_waypoints = None
+        self.base_waypoints = None
 
         #Boolean that specifies if the map has been loaded at least once
         self.map_loaded = False
@@ -61,12 +60,12 @@ class WaypointUpdater(object):
         yw = waypoint.pose.pose.position.y
         zw = waypoint.pose.pose.position.z
 
-        xc = self.currentPose.position.x
-        yc = self.currentPose.position.y
-        zc = self.currentPose.position.z
+        xc = self.pose.position.x
+        yc = self.pose.position.y
+        zc = self.pose.position.z
 
-        return math.sqrt((xw - xc)*(xw - xc) + 
-                         (yw - yc)*(yw - yc) + 
+        return math.sqrt((xw - xc)*(xw - xc) +
+                         (yw - yc)*(yw - yc) +
                          (zw - zc)*(zw - zc))
 
     def closestWaypointId(self):
@@ -81,13 +80,13 @@ class WaypointUpdater(object):
         idClosest = 0
 
         #rospy.loginfo('[closestWaypointId] ==> ')
-        # for i in range(len(self.map_waypoints)):
-        #     waypoint = self.map_waypoints[i]
+        # for i in range(len(self.base_waypoints)):
+        #     waypoint = self.base_waypoints[i]
         #     dist = self.distance_from_waypoint(waypoint)
         #     if dist < closestLen:
         #         closestLen = dist
         #         idClosest = idClosest
-            #rospy.loginfo('[closestWaypointId] - waypoint %s %s %s %s', 
+            #rospy.loginfo('[closestWaypointId] - waypoint %s %s %s %s',
             #              i,
             #              waypoint.pose.pose.position.x,
             #              waypoint.pose.pose.position.y,
@@ -100,20 +99,20 @@ class WaypointUpdater(object):
             Find the next waypoint ahead of the vehicle
         """
         closestId = self.closestWaypointId()
-        closestWaypoint = self.map_waypoints[closestId]
+        closestWaypoint = self.base_waypoints[closestId]
 
         map_x = closestWaypoint.pose.pose.position.x
         map_y = closestWaypoint.pose.pose.position.y
 
-        car_x = self.currentPose.position.x
-        car_y = self.currentPose.position.y
+        car_x = self.pose.position.x
+        car_y = self.pose.position.y
 
         heading = math.atan2((map_y - car_y), (map_x - car_x))
 
-        _quaternion = (self.currentPose.orientation.x,
-                      self.currentPose.orientation.y,
-                      self.currentPose.orientation.z,
-                      self.currentPose.orientation.w)
+        _quaternion = (self.pose.orientation.x,
+                      self.pose.orientation.y,
+                      self.pose.orientation.z,
+                      self.pose.orientation.w)
         euler = tf.transformations.euler_from_quaternion(_quaternion)
         theta = euler[2]
 
@@ -126,73 +125,54 @@ class WaypointUpdater(object):
 
     def pose_cb(self, msg):
         """
-            /current_pose callback funcion
+            /current_pose callback function
             NB: Rate unknown => the processing may need to be done
-            elswhere
+            elsewhere
         """
-        # TODO: Implement
-        self.currentPose = msg.pose
+        self.pose = msg.pose
 
-        if self.map_loaded:
-            idNext = self.nextWaypoint()
-
-            # Pose XYZ
-            _nextWaypoint = self.map_waypoints[idNext]
-            rospy.loginfo('[pose_cb_next] - id %s - %s %s %s' , 
-                          idNext,
-                          _nextWaypoint.pose.pose.position.x,
-                          _nextWaypoint.pose.pose.position.y,
-                          _nextWaypoint.pose.pose.position.z)
-
-        # Pose XYZ
-        rospy.loginfo('[pose_cb] - Pose xyz %s %s %s', 
-                        self.currentPose.position.x, 
-                        self.currentPose.position.y, 
-                        self.currentPose.position.z)
-
-        # rospy.loginfo('[msg_pose] - Pose xyz %s %s %s', 
-        #                 msg.pose.position.x, 
-        #                 msg.pose.position.y, 
-        #                 msg.pose.position.z)
-
-        # Quaternion 
-        # rospy.loginfo('[pose_cb] - Quaternion xyzw %s %s %s - %s', 
-        #                 self.currentPose.orientation.x, 
-        #                 self.currentPose.orientation.y, 
-        #                 self.currentPose.orientation.z,
-        #                 self.currentPose.orientation.w)
-        # pass
-
-    def waypoints_cb(self, waypoints):
+    def waypoints_cb(self, lane):
         """
-            /base_waypoints Callback function
+        /base_waypoints Callback function
         """
-        # TODO: Implement
-        self.map_waypoints = waypoints.waypoints
+        self.base_waypoints = lane.waypoints
 
-        rospy.loginfo('[waypoints_cb] - map_length %s', len(self.map_waypoints))
-        # rospy.loginfo('[waypoints_cb] - first %s %s %s', 
-        #               self.map_waypoints[0].pose.pose.position.x,
-        #               self.map_waypoints[0].pose.pose.position.y,
-        #               self.map_waypoints[0].pose.pose.position.z)
-        # _last = len(self.map_waypoints) - 1
-        # rospy.loginfo('[waypoints_cb] - last %s %s %s', 
-        #               self.map_waypoints[_last].pose.pose.position.x,
-        #               self.map_waypoints[_last].pose.pose.position.y,
-        #               self.map_waypoints[_last].pose.pose.position.z)
-        # The map has been loaded
+        if not self.pose:
+            rospy.logwarn('no pose has been set')
+            return None
 
-        rospy.loginfo('[waypoints_cb_list] ===> ')
-        for _id in range(10):
-            _mult = 100
-            rospy.loginfo('[waypoints_cb_list] - id %s - %s %s %s' , 
-                          _id,
-                          self.map_waypoints[_mult*_id].pose.pose.position.x,
-                          self.map_waypoints[_mult*_id].pose.pose.position.y,
-                          self.map_waypoints[_mult*_id].pose.pose.position.z)
-        self.map_loaded = True
-        # rospy.loginfo('[waypoints_cb]')
-        # pass
+        if not self.base_waypoints:
+            rospy.logwarn('no waypoints have been set')
+            return None
+
+        # get closest waypoint
+        c_x = self.pose.position.x
+        c_y = self.pose.position.y
+        c_o = self.pose.orientation
+        c_q = (c_o.x, c_o.y, c_o.z, c_o.w)
+        _, _, c_w = tf.transformations.euler_from_quaternion(c_q)
+
+        waypoints_ahead = []
+        for wp_i in range(len(self.base_waypoints)):
+            # make sure waypoint is ahead of car
+            w = self.base_waypoints[wp_i]
+            w_x = w.pose.pose.position.x
+            w_y = w.pose.pose.position.y
+            w_ahead = ((w_x - c_x) * math.cos(c_w) +
+                       (w_y - c_y) * math.sin(c_w)) > 0
+
+            if not w_ahead:
+                continue
+
+            # calculate distance and store if closer than current
+            w_d = math.sqrt((c_x - w_x)**2 + (c_y - w_y)**2)
+            waypoints_ahead.append((w, w_d))
+
+        waypoints_ahead = sorted(waypoints_ahead, key=itemgetter(1))[:LOOKAHEAD_WPS]
+        wps = [wp[0] for wp in waypoints_ahead]
+        lane = Lane()
+        lane.waypoints = wps
+        self.final_waypoints_pub.publish(lane)
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
