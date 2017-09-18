@@ -4,9 +4,13 @@ import rospy
 from std_msgs.msg import Bool
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import PoseStamped
 import math
 
 from twist_controller import Controller
+from yaw_controller import YawController
+from lowpass import LowPassFilter
+from pid import PID
 
 '''
 You can build this node only after you have built (or partially built) the `waypoint_updater` node.
@@ -45,20 +49,48 @@ class DBWNode(object):
         steer_ratio = rospy.get_param('~steer_ratio', 14.8)
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
+        min_speed = rospy.get_param('~min_speed', 0.1)
 
-        self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
-                                         SteeringCmd, queue_size=1)
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
                                             ThrottleCmd, queue_size=1)
         self.brake_pub = rospy.Publisher('/vehicle/brake_cmd',
                                          BrakeCmd, queue_size=1)
+        self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
+                                         SteeringCmd, queue_size=1)
 
-        # TODO: Create `TwistController` object
+        # self.controller = TwistController(<Arguments you wish to provide>)
+        # TODO: write controller
         # self.controller = TwistController(<Arguments you wish to provide>)
 
-        # TODO: Subscribe to all the topics you need to
+        # def __init__(self, wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle):
+        self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
+
+        # def __init__(self, tau, ts):
+        # self.low_pass_filter = LowPassFilter()
+
+        self.current_velocity = None
+        self.target_velocity = None
+        self.dbw_enabled = True # maybe change to False by default
+        self.pose = None
+
+        rospy.Subscriber("/current_velocity", TwistStamped, self.velocity_cb)
+        rospy.Subscriber("/twist_cmd", TwistStamped, self.twist_cb)
+        rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.dbw_cb)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
 
         self.loop()
+
+    def velocity_cb(self, msg):
+        self.current_velocity = msg.twist
+
+    def twist_cb(self, msg):
+        self.target_velocity = msg.twist
+
+    def dbw_cb(self, msg):
+        self.dbw_enabled = msg.data
+
+    def pose_cb(self, msg):
+        self.pose = msg.pose
 
     def loop(self):
         rate = rospy.Rate(50) # 50Hz
@@ -70,8 +102,40 @@ class DBWNode(object):
             #                                                     <current linear velocity>,
             #                                                     <dbw status>,
             #                                                     <any other argument you need>)
-            # if <dbw is enabled>:
-            #   self.publish(throttle, brake, steer)
+
+            if not self.current_velocity:
+                rospy.logwarn('no current velocity has been set')
+                rate.sleep()
+                continue
+
+            if not self.target_velocity:
+                rospy.logwarn('no target velocity has been set')
+                rate.sleep()
+                continue
+
+            if not self.pose:
+                rospy.logwarn('no pose has been set')
+                rate.sleep()
+                continue
+
+            if not self.dbw_enabled:
+                rospy.logwarn('no driving by wire')
+                rate.sleep()
+                continue
+
+            #throttle, brake, steer = self.controller.control(
+            #    current_velocity=self.current_velocity.linear.x,
+            #    linear_velocity=self.target_velocity.linear.x,
+            #    angular_velocity=self.target_velocity.angular.z
+            #)
+
+            steer = self.yaw_controller.get_steering(
+                self.target_velocity.linear.x,
+                self.target_velocity.angular.z,
+                self.current_velocity.linear.x)
+            self.publish(0.3, 0, math.degrees(steer))
+
+            # self.publish(throttle, brake, steer)
             rate.sleep()
 
     def publish(self, throttle, brake, steer):
