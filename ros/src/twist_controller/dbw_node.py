@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float64
 from dbw_mkz_msgs.msg import ThrottleCmd, SteeringCmd, BrakeCmd, SteeringReport
 from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import PoseStamped
@@ -50,6 +50,11 @@ class DBWNode(object):
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
         min_speed = rospy.get_param('~min_speed', 0.1)
+        Kp = rospy.get_param('~pid_kp', 0.5)
+        Ki = rospy.get_param('~pid_ki', 0.01)
+        Kd = rospy.get_param('~pid_kd', 0.0)
+        pid_cmd_range = rospy.get_param('~pid_cmd_range', 100)
+        filter_tau = rospy.get_param('~filter_tau', 0.0)
 
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
                                             ThrottleCmd, queue_size=1)
@@ -58,15 +63,24 @@ class DBWNode(object):
         self.steer_pub = rospy.Publisher('/vehicle/steering_cmd',
                                          SteeringCmd, queue_size=1)
 
-        # self.controller = TwistController(<Arguments you wish to provide>)
-        # TODO: write controller
-        # self.controller = TwistController(<Arguments you wish to provide>)
+        self.vx_pub = rospy.Publisher('/debug_vx', Float64, queue_size=1)
+        self.sz_pub = rospy.Publisher('/debug_sz', Float64, queue_size=1)
+        self.vxd_pub = rospy.Publisher('/debug_vxd', Float64, queue_size=1)
+        self.szd_pub = rospy.Publisher('/debug_szd', Float64, queue_size=1)
 
         # def __init__(self, wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle):
         self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
 
         # def __init__(self, tau, ts):
-        # self.low_pass_filter = LowPassFilter()
+        self.filter = LowPassFilter(filter_tau, 1.0)
+
+        # Pid controller for the target velocity
+        self.pid_vel = PID(Kp, Ki, Kd, -pid_cmd_range, pid_cmd_range)
+
+        # # self.controller = TwistController(<Arguments you wish to provide>)
+        # # TODO: write controller
+        self.controller = Controller(self.yaw_controller, self.pid_vel, self.filter)
+
 
         self.current_velocity = None
         self.target_velocity = None
@@ -82,10 +96,14 @@ class DBWNode(object):
 
     def velocity_cb(self, msg):
         self.current_velocity = msg.twist
+        self.vx_pub.publish(self.current_velocity.linear.x)
+        self.sz_pub.publish(self.current_velocity.angular.z)
 
     def twist_cb(self, msg):
         self.target_velocity = msg.twist
-
+        self.vxd_pub.publish(self.target_velocity.linear.x)
+        self.szd_pub.publish(self.target_velocity.angular.z)
+        
     def dbw_cb(self, msg):
         self.dbw_enabled = msg.data
 
@@ -120,20 +138,24 @@ class DBWNode(object):
 
             if not self.dbw_enabled:
                 rospy.logwarn('no driving by wire')
+                #Reset the PID controller
+                self.controller.reset()
                 rate.sleep()
                 continue
+            
+            throttle, brake, steer = self.controller.control(
+               current_velocity=self.current_velocity.linear.x,
+               linear_velocity=self.target_velocity.linear.x,
+               angular_velocity=self.target_velocity.angular.z
+            )
 
-            #throttle, brake, steer = self.controller.control(
-            #    current_velocity=self.current_velocity.linear.x,
-            #    linear_velocity=self.target_velocity.linear.x,
-            #    angular_velocity=self.target_velocity.angular.z
-            #)
+            Ve = self.target_velocity.linear.x - self.current_velocity.linear.x 
+            Av = self.target_velocity.angular.z
 
-            steer = self.yaw_controller.get_steering(
-                self.target_velocity.linear.x,
-                self.target_velocity.angular.z,
-                self.current_velocity.linear.x)
-            self.publish(0.3, 0, math.degrees(steer))
+            rospy.logwarn('[Out] => Verr %s Av %s - T %s B %s S %s', Ve, Av,
+                throttle, brake, steer)
+
+            self.publish(throttle, brake, steer)
 
             # self.publish(throttle, brake, steer)
             rate.sleep()
