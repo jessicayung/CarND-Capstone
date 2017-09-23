@@ -254,8 +254,8 @@ class TLDetector(object):
 
         idx = l_wp[1]
         tl_state = self.get_light_state(l_wp[2])
-        rospy.logerr(tl_state)
-        rospy.logerr(idx)
+        #rospy.logerr(tl_state)
+        #rospy.logerr(idx)
         return idx, tl_state
 
 if __name__ == '__main__':
