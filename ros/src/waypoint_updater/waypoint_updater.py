@@ -155,8 +155,12 @@ class WaypointUpdater(object):
         rospy.logwarn('[waypoints_cb]')
 
     def traffic_cb(self, msg):
-        # TODO: Callback for /traffic_waypoint message.
-        pass
+        # Callback for /traffic_waypoint message.
+        red_waypoint = msg.data
+        if red_waypoint == -1:
+            return
+
+        rospy.logerr(red_waypoint)
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message.
