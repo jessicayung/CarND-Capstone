@@ -53,7 +53,7 @@ class DBWNode(object):
         Kp = rospy.get_param('~pid_kp', 0.5)
         Ki = rospy.get_param('~pid_ki', 0.01)
         Kd = rospy.get_param('~pid_kd', 0.0)
-        pid_cmd_range = rospy.get_param('~pid_cmd_range', 100)
+        pid_cmd_range = rospy.get_param('~pid_cmd_range', 10)
         filter_tau = rospy.get_param('~filter_tau', 0.0)
 
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
@@ -75,7 +75,7 @@ class DBWNode(object):
         self.filter = LowPassFilter(filter_tau, 1.0)
 
         # Pid controller for the target velocity
-        self.pid_vel = PID(Kp, Ki, Kd, -pid_cmd_range, pid_cmd_range)
+        self.pid_vel = PID(Kp, Ki, Kd, 0, pid_cmd_range)
 
         # # self.controller = TwistController(<Arguments you wish to provide>)
         # # TODO: write controller
@@ -137,7 +137,7 @@ class DBWNode(object):
                 continue
 
             if not self.dbw_enabled:
-                rospy.logwarn('no driving by wire')
+                rospy.logdebug('no driving by wire')
                 #Reset the PID controller
                 self.controller.reset()
                 rate.sleep()
