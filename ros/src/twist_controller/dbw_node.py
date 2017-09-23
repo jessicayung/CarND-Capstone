@@ -152,7 +152,7 @@ class DBWNode(object):
             Ve = self.target_velocity.linear.x - self.current_velocity.linear.x 
             Av = self.target_velocity.angular.z
 
-            rospy.logwarn('[Out] => Verr %s Av %s - T %s B %s S %s', Ve, Av,
+            rospy.logdebug('[Out] => Verr %s Av %s - T %s B %s S %s', Ve, Av,
                 throttle, brake, steer)
 
             self.publish(throttle, brake, steer)

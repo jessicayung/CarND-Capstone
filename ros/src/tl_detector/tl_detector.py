@@ -171,7 +171,13 @@ class TLDetector(object):
             self.prev_light_loc = None
             return TrafficLight.UNKNOWN
 
-        cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+        # get image from msg into cv2
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            cv2.imshow("Camera stream", cv_image)
+            cv2.waitKey(1)        
+        except:
+            pass
 
         x, y = self.project_to_image_plane(light.pose.pose.position)
 
@@ -231,17 +237,17 @@ class TLDetector(object):
             l_d = math.sqrt((c_x - l_x)**2 + (c_y - l_y)**2)
             if l_d < l_wp[0]:
                 l_wp = l_d, self.get_closest_waypoint(l.pose.pose), l
-
+            
         # TODO: now get the state given the light object
         light_positions = self.config['light_positions']
-        #rospy.logerr('Light Positions')
-        #rospy.logerr(light_positions)
-        #rospy.logerr('Car closest waypoint')
-        #rospy.logerr(c_wp)
-        #rospy.logerr('Light closest waypoint ' +
-        #             '(distance to car, waypoint idx, light obj)')
-        #rospy.logerr(l_wp)
-        #rospy.logerr('')
+        rospy.logerr('Light Positions')
+        rospy.logerr(light_positions)
+        rospy.logerr('Car closest waypoint')
+        rospy.logerr(c_wp)
+        rospy.logerr('Light closest waypoint ' +
+                     '(distance to car, waypoint idx, light obj)')
+        rospy.logerr(l_wp)
+        rospy.logerr('')
         tl_state = self.get_light_state(l_wp[2])
 
         return idx, tl_state
