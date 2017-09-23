@@ -180,17 +180,18 @@ class TLDetector(object):
 
         # get image from msg into cv2
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
+            # get rgb! cv handles different format
+            cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "rgb8")
         except:
             pass
 
-        x, y = self.project_to_image_plane(light.pose.pose.position)
-
-        rospy.logerr(x)
-        rospy.logerr(y)
         #TODO use light location to zoom in on traffic light in image
-        #Get classification
+        x, y = self.project_to_image_plane(light.pose.pose.position)
+        #rospy.logerr(x)
+        #rospy.logerr(y)
 
+
+        # Get classification
         image = imresize(cv_image, (224, 224, 3))
         return self.light_classifier.get_classification(image)
 
@@ -245,19 +246,16 @@ class TLDetector(object):
             l_d = math.sqrt((c_x - l_x)**2 + (c_y - l_y)**2)
             if l_d < l_wp[0]:
                 l_wp = l_d, self.get_closest_waypoint(l.pose.pose), l
-            
+
         # TODO: now get the state given the light object
         light_positions = self.config['light_positions']
-        rospy.logerr('Light Positions')
-        rospy.logerr(light_positions)
-        rospy.logerr('Car closest waypoint')
-        rospy.logerr(c_wp)
-        rospy.logerr('Light closest waypoint ' +
-                     '(distance to car, waypoint idx, light obj)')
-        rospy.logerr(l_wp)
-        rospy.logerr('')
-        tl_state = self.get_light_state(l_wp[2])
+        #rospy.logerr('Light Positions')
+        #rospy.logerr(light_positions)
 
+        idx = l_wp[1]
+        tl_state = self.get_light_state(l_wp[2])
+        rospy.logerr(tl_state)
+        rospy.logerr(idx)
         return idx, tl_state
 
 if __name__ == '__main__':

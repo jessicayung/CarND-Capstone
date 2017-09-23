@@ -3,6 +3,7 @@ import h5py
 import rospy
 import keras.backend as K
 import numpy as np
+import matplotlib.pyplot as plt
 
 from styx_msgs.msg import TrafficLight
 
@@ -159,27 +160,36 @@ class TLClassifier(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        cv2.imshow("Camera stream", image)
-        cv2.waitKey(1)
+        d = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
         image = img_to_array(image)
         image /= 255.0
         image = np.expand_dims(image, axis=0)
-        preds = self.model.predict(image)[0]
-        pred = np.argmax(preds)
+        pred = np.argmax(self.model.predict(image)[0])
+        rospy.logdebug(pred)
+
+        # neural network
         # 0:= No traffic light in driving direction
         # 1:= Red traffic light in driving direction
         # 2:= Green traffic light in driving direction
-        
-        # uint8 UNKNOWN=4
-        # uint8 GREEN=2
-        # uint8 YELLOW=1
-        # uint8 RED=0
-        rospy.logerr(preds)
-        rospy.logerr(pred)
-        
-        if pred == 1:
-            return TrafficLight.RED
-        if pred == 2:
-            return TrafficLight.GREEN
 
-        return TrafficLight.UNKNOWN
+        # data type
+        # uint8 RED=0
+        # uint8 YELLOW=1
+        # uint8 GREEN=2
+        # uint8 UNKNOWN=4
+
+        strn = 'UNKNOWN'
+        state = TrafficLight.UNKNOWN
+        if pred == 1:
+            strn = 'RED'
+            state = TrafficLight.RED
+        elif pred == 2:
+            strn = 'GREEN'
+            state = TrafficLight.GREEN
+
+        cv2.putText(d, strn, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+        cv2.imshow("Camera stream", d)
+        cv2.waitKey(1)
+
+        return state
