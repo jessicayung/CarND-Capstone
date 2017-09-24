@@ -58,6 +58,7 @@ class TLDetector(object):
         self.last_state = TrafficLight.UNKNOWN
         self.last_wp = -1
         self.state_count = 0
+        self.light_classifier = None
         self.light_classifier = TLClassifier()
 
         rospy.spin()
@@ -217,6 +218,10 @@ class TLDetector(object):
 
         if not self.lights:
             rospy.logwarn('no lights have been set')
+            return idx, tl_state
+
+        if not self.light_classifier:
+            rospy.logwarn('no classifier initialized')
             return idx, tl_state
 
         # get current position and yaw of the car

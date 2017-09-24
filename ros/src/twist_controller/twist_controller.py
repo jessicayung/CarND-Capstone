@@ -15,8 +15,7 @@ class Controller(object):
         self.t0 = time.time()
         self.dt = 0.0
 
-    def control(self, current_velocity,linear_velocity,angular_velocity):
-        # TODO: Change the arg, kwarg list to suit your needs
+    def control(self, current_velocity, linear_velocity, angular_velocity):
         # Return throttle, brake, steer
 
         #Apply the filter to the angular velocity
@@ -38,19 +37,13 @@ class Controller(object):
         self.dt = time.time() - self.t0
         self.t0 += self.dt
 
-        #TODO - Apply the brakes if necessary
+        #Apply the brakes if necessary
         brake = 0.0
         if cmd > 0:
             throttle = cmd
-            # brake = 0.0
         else:
             throttle = 0.0
-            # brake = math.fabs(throttle)
-            # if brake > 1.0:
-            #     brake = 1.0
-            # #Add deadband for the brakes
-            # elif brake < 0.0:
-            #     brake = 0.0
+            brake = min(0, max(math.fabs(throttle), 1))
 
         return throttle, brake, steer
 

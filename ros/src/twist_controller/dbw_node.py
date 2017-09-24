@@ -50,10 +50,10 @@ class DBWNode(object):
         max_lat_accel = rospy.get_param('~max_lat_accel', 3.)
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
         min_speed = rospy.get_param('~min_speed', 0.1)
-        Kp = rospy.get_param('~pid_kp', 0.5)
-        Ki = rospy.get_param('~pid_ki', 0.01)
-        Kd = rospy.get_param('~pid_kd', 0.0)
-        pid_cmd_range = rospy.get_param('~pid_cmd_range', 10)
+        Kp = rospy.get_param('~pid_kp', 1.1)
+        Ki = rospy.get_param('~pid_ki', 0.004)
+        Kd = rospy.get_param('~pid_kd', 0.5)
+        pid_cmd_range = rospy.get_param('~pid_cmd_range', 4)
         filter_tau = rospy.get_param('~filter_tau', 0.0)
 
         self.throttle_pub = rospy.Publisher('/vehicle/throttle_cmd',
@@ -69,16 +69,18 @@ class DBWNode(object):
         self.szd_pub = rospy.Publisher('/debug_szd', Float64, queue_size=1)
 
         # def __init__(self, wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle):
-        self.yaw_controller = YawController(wheel_base, steer_ratio, min_speed, max_lat_accel, max_steer_angle)
+        self.yaw_controller = YawController(wheel_base, steer_ratio,
+                                            min_speed, max_lat_accel,
+                                            max_steer_angle)
 
         # def __init__(self, tau, ts):
         self.filter = LowPassFilter(filter_tau, 1.0)
 
         # Pid controller for the target velocity
-        self.pid_vel = PID(Kp, Ki, Kd, 0, pid_cmd_range)
+        self.pid_vel = PID(Kp, Ki, Kd, -decel_limit, accel_limit)
 
-        # # self.controller = TwistController(<Arguments you wish to provide>)
-        # # TODO: write controller
+        # self.controller = TwistController(<Arguments you wish to provide>)
+        # write controller
         self.controller = Controller(self.yaw_controller, self.pid_vel, self.filter)
 
 
@@ -149,15 +151,13 @@ class DBWNode(object):
                angular_velocity=self.target_velocity.angular.z
             )
 
-            Ve = self.target_velocity.linear.x - self.current_velocity.linear.x 
-            Av = self.target_velocity.angular.z
-
-            rospy.logdebug('[Out] => Verr %s Av %s - T %s B %s S %s', Ve, Av,
-                throttle, brake, steer)
+            #steer = self.yaw_controller.get_steering(
+            #    self.target_velocity.linear.x,
+            #    self.target_velocity.angular.z,
+            #    self.current_velocity.linear.x)
+            #self.publish(0.3, 0, math.degrees(steer))
 
             self.publish(throttle, brake, steer)
-
-            # self.publish(throttle, brake, steer)
             rate.sleep()
 
     def publish(self, throttle, brake, steer):

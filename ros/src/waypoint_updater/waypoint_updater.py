@@ -39,78 +39,106 @@ class WaypointUpdater(object):
         # Current pose of the vehicle updated at an unknown rate
         self.pose = None
 
-        # Part of the complete waypoints retrived from /base_waypoints
-        # Note: In total /base_waypoints has 10902 data points
-        self.base_waypoints = None
+        # Part of the complete waypoints retrived from /waypoints
+        self.waypoints = None
 
-        #Select the base waypoints ahead of the vehicle
+        # Select the base waypoints ahead of the vehicle
         self.waypoints_ahead = []
 
         #Id of the first waypoint ahead
         self.next_waypoint_id = None
 
-        #Boolean that specifies if the map has been loaded at least once
-        self.simulator_started = False
+        # id of red light waypoint
+        self.red_waypoint = -1
 
-        self.main_loop()
-        # rospy.spin()
+        rospy.Timer(rospy.Duration(0.1), self.process_final_waypoints)
+        rospy.spin()
 
+    def process_final_waypoints(self, event):
 
-    def main_loop(self):
-        rate = rospy.Rate(20) #20Hz
-        while not rospy.is_shutdown():
-            if self.pose and self.base_waypoints: 
-                # get the pose of the vehicle
-                c_x = self.pose.position.x
-                c_y = self.pose.position.y
-                c_o = self.pose.orientation
-                c_q = (c_o.x, c_o.y, c_o.z, c_o.w)
-                _, _, c_t = tf.transformations.euler_from_quaternion(c_q)
+        if not self.pose:
+            rospy.logwarn('no pose has been set')
+            return None
 
-                #Waipoints ahead of the car
-                waypoints_ahead = []
+        if not self.waypoints:
+            rospy.logwarn('no waypoints have been set')
+            return None
 
-                #Define the starting and ending index of the waypoints
-                start = 0
-                end = len(self.base_waypoints)
-                upsampling = 100
-                #if self.next_waypoint_id != None:
-                    #start = self.next_waypoint_id
-                    #end = min(start+LOOKAHEAD_WPS+1, len(self.base_waypoints))
-                
-                set_next_waypoint_id = True
-                for wp_i in range(start, end, upsampling):
-                    # make sure waypoint is ahead of car
-                    w = self.base_waypoints[wp_i]
-                    w_x = w.pose.pose.position.x
-                    w_y = w.pose.pose.position.y
-                    w_ahead = ((w_x - c_x) * math.cos(c_t) +
-                               (w_y - c_y) * math.sin(c_t)) > 0.0
+        # get closest waypoint
+        idx_begin = self.get_closest_waypoint_ahead()
+        idx_end = idx_begin + LOOKAHEAD_WPS
+        idx_end = min(idx_end, len(self.waypoints))
 
-                    if not w_ahead:
-                        continue
+        wps = []
+        for i in range(idx_begin, idx_end):
+            velocity = 4.
 
-                    #Retrieve the Id of the first point ahead 
-                    if set_next_waypoint_id:
-                        self.next_waypoint_id = wp_i
-                        set_next_waypoint_id = False
+            if self.red_waypoint > 0:
+                dist_to_red = self.distance(i, self.red_waypoint)
+                if dist_to_red < 50.:
+                    velocity = 0.
+                elif dist_to_red < 100.:
+                    velocity *= dist_to_red / 100.
 
-                    # calculate distance and store if closer than current
-                    w_d = math.sqrt((c_x - w_x)**2 + (c_y - w_y)**2)
-                    waypoints_ahead.append((w, w_d))
+            self.set_waypoint_velocity(i, min(velocity, 4))
+            wps.append(self.waypoints[i])
 
-                    # if len(waypoints_ahead) >= LOOKAHEAD_WPS:
-                    #     break
+        lane = Lane()
+        lane.waypoints = wps
+        self.final_waypoints_pub.publish(lane)
 
-                waypoints_ahead = sorted(waypoints_ahead, key=itemgetter(1))[:LOOKAHEAD_WPS]
-                # waypoints_ahead = sorted(waypoints_ahead, key=itemgetter(1))
-                self.waypoints_ahead = waypoints_ahead
-                wps = [wp[0] for wp in waypoints_ahead]
-                lane = Lane()
-                lane.waypoints = wps
-                self.final_waypoints_pub.publish(lane)
+    def get_closest_waypoint_ahead(self):
 
-            rate.sleep()
+        # get the pose of the vehicle
+        cx = self.pose.position.x
+        cy = self.pose.position.y
+        co = self.pose.orientation
+        cq = (co.x, co.y, co.z, co.w)
+        _, _, ct = tf.transformations.euler_from_quaternion(cq)
+
+        closest_wp = (float('inf'), -1)
+        for wp_i in range(len(self.waypoints)):
+            wx = self.waypoints[wp_i].pose.pose.position.x
+            wy = self.waypoints[wp_i].pose.pose.position.y
+            wa = ((wx - cx) * math.cos(ct) +
+                  (wy - cy) * math.sin(ct)) > 0.0
+
+            if not wa:
+                continue
+
+            dist = math.sqrt((cx - wx)**2 + (cy - wy)**2)
+            if dist < closest_wp[0]:
+                closest_wp = (dist, wp_i)
+
+        return closest_wp[1]
+
+    def pose_cb(self, msg):
+        self.pose = msg.pose
+
+    def waypoints_cb(self, lane):
+        self.waypoints = lane.waypoints
+
+    def traffic_cb(self, msg):
+        self.red_waypoint = msg.data
+
+    def obstacle_cb(self, msg):
+        # TODO: callback for /obstacle_waypoint message.
+        pass
+
+    def get_waypoint_velocity(self, waypoint):
+        return self.waypoints[i].twist.twist.linear.x
+
+    def set_waypoint_velocity(self, waypoint, velocity):
+        self.waypoints[waypoint].twist.twist.linear.x = velocity
+
+    def distance(self, wp1, wp2):
+        dist = 0
+        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
+        for i in range(wp1, wp2+1):
+            dist += dl(self.waypoints[wp1].pose.pose.position,
+                       self.waypoints[i].pose.pose.position)
+            wp1 = i
+        return dist
 
     def distance_from_waypoint(self, waypoint):
         """
@@ -129,56 +157,6 @@ class WaypointUpdater(object):
                          (yw - yc)*(yw - yc) +
                          (zw - zc)*(zw - zc))
 
-
-    def pose_cb(self, msg):
-        """
-            /current_pose callback function
-            NB: Rate unknown => the processing may need to be done
-            elsewhere
-        """
-        self.pose = msg.pose
-
-        if not self.pose:
-            rospy.logwarn('no pose has been set')
-            return None
-
-        if not self.base_waypoints:
-            rospy.logwarn('no waypoints have been set')
-            return None
-
-
-    def waypoints_cb(self, lane):
-        """
-        /base_waypoints Callback function
-        """
-        self.base_waypoints = lane.waypoints
-        rospy.logwarn('[waypoints_cb]')
-
-    def traffic_cb(self, msg):
-        # Callback for /traffic_waypoint message.
-        red_waypoint = msg.data
-        if red_waypoint == -1:
-            return
-
-        rospy.logerr(red_waypoint)
-
-    def obstacle_cb(self, msg):
-        # TODO: Callback for /obstacle_waypoint message.
-        pass
-
-    def get_waypoint_velocity(self, waypoint):
-        return waypoint.twist.twist.linear.x
-
-    def set_waypoint_velocity(self, waypoints, waypoint, velocity):
-        waypoints[waypoint].twist.twist.linear.x = velocity
-
-    def distance(self, waypoints, wp1, wp2):
-        dist = 0
-        dl = lambda a, b: math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2  + (a.z-b.z)**2)
-        for i in range(wp1, wp2+1):
-            dist += dl(waypoints[wp1].pose.pose.position, waypoints[i].pose.pose.position)
-            wp1 = i
-        return dist
 
 
 if __name__ == '__main__':

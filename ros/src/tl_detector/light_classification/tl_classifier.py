@@ -165,9 +165,10 @@ class TLClassifier(object):
         image = img_to_array(image)
         image /= 255.0
         image = np.expand_dims(image, axis=0)
-        pred = np.argmax(self.model.predict(image)[0])
-        rospy.logdebug(pred)
-
+        preds = self.model.predict(image)[0]
+        pred = np.argmax(preds)
+        rospy.logerr(preds)
+        rospy.logerr(pred)
         # neural network
         # 0:= No traffic light in driving direction
         # 1:= Red traffic light in driving direction
