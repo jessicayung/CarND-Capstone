@@ -76,8 +76,8 @@ class DBWNode(object):
         # def __init__(self, tau, ts):
         self.filter = LowPassFilter(filter_tau, 1.0)
 
-        # Pid controller for the target velocity
-        self.pid_vel = PID(Kp, Ki, Kd, -decel_limit, accel_limit)
+        # Pid controller for the target velocity (decel_limit is already negative)
+        self.pid_vel = PID(Kp, Ki, Kd, decel_limit, accel_limit)
 
         # self.controller = TwistController(<Arguments you wish to provide>)
         # write controller

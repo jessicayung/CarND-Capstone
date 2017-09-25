@@ -26,6 +26,7 @@ class PID(object):
         y = self.kp * error + self.ki * self.int_val + self.kd * derivative;
         val = max(self.min, min(y, self.max))
 
+        # <tw00> Not sure this anti-windup implementation is working. Basically int_val is ALWAYS updated since min <= val <= max (line 27) </tw00>
         if val > self.max:
             val = self.max
         elif val < self.min:
