@@ -148,7 +148,7 @@ class TLClassifier(object):
         self.model = SqueezeNet()
         self.model.load_weights("light_classification/weights/01.weights")
         self.model._make_predict_function()
-        rospy.logerr("Model loaded.")
+        rospy.logdebug("Model loaded.")
 
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
@@ -167,8 +167,8 @@ class TLClassifier(object):
         image = np.expand_dims(image, axis=0)
         preds = self.model.predict(image)[0]
         pred = np.argmax(preds)
-        rospy.logerr(preds)
-        rospy.logerr(pred)
+        rospy.logdebug(preds)
+        rospy.logdebug(pred)
         # neural network
         # 0:= No traffic light in driving direction
         # 1:= Red traffic light in driving direction
