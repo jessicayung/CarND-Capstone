@@ -74,7 +74,7 @@ class DBWNode(object):
                                             max_steer_angle)
 
         # def __init__(self, tau, ts):
-        self.filter = LowPassFilter(filter_tau, 1.0)
+        self.filter = LowPassFilter(filter_tau, 0.8)
 
         # Pid controller for the target velocity (decel_limit is already negative)
         self.pid_vel = PID(Kp, Ki, Kd, decel_limit, accel_limit)
