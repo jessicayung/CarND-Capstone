@@ -43,7 +43,10 @@ class Controller(object):
             throttle = cmd
         else:
             throttle = 0.0
-            brake = min(0, max(math.fabs(throttle), 1))
+            # limit abs(cmd) to 0 and the negative lower limit of the pid controller
+            # limiting brake to 1.0 would result in controller windup, since
+            # pid_lin_vel.min can be > 1.0.
+            brake = max(0, min(math.fabs(cmd), -self.pid_lin_vel.min))
 
         return throttle, brake, steer
 
