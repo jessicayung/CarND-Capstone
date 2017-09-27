@@ -205,9 +205,6 @@ class TLDetector(object):
             int: ID of traffic light color (specified in styx_msgs/TrafficLight)
 
         """
-        # List of positions that correspond to the line to stop in front of for a given intersection
-        stop_line_positions = self.config['stop_line_positions']
-
         # prevent from running function if values are not set
         idx, tl_state = -1, TrafficLight.UNKNOWN
         if not self.pose:
@@ -263,11 +260,6 @@ class TLDetector(object):
             #rospy.loginfo("Store light {} with distance {} and position {}, {}".format(i, l_d, l_x, l_y))
             if l_d < l_wp[0]:
                 l_wp = l_d, self.get_closest_waypoint(l.pose.pose), l
-
-        # TODO: now get the state given the light object
-        light_positions = self.config['light_positions']
-        #rospy.logerr('Light Positions')
-        #rospy.logerr(light_positions)
 
         idx = l_wp[1]
         tl_state = self.get_light_state(l_wp[2])
