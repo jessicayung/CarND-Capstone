@@ -51,7 +51,16 @@ class WaypointUpdater(object):
         # id of red light waypoint
         self.red_waypoint = -1
 
-        rospy.Timer(rospy.Duration(0.1), self.process_final_waypoints)
+        # Cycle time for the waypoint updater
+        self.dt = 0.1
+
+        #Maximum allowed velocity
+        self.max_vel = 4.0
+
+        # Minimum distance to the waypoint ahead
+        self.min_distance_ahead = self.max_vel*self.dt
+
+        rospy.Timer(rospy.Duration(self.dt), self.process_final_waypoints)
         rospy.spin()
 
     def process_final_waypoints(self, event):
@@ -71,7 +80,7 @@ class WaypointUpdater(object):
 
         wps = []
         for i in range(idx_begin, idx_end):
-            velocity = 4.
+            velocity = self.max_vel
 
             if self.red_waypoint > 0:
                 dist_to_red = self.distance(i, self.red_waypoint)
@@ -80,7 +89,7 @@ class WaypointUpdater(object):
                 elif dist_to_red < 100.:
                     velocity *= dist_to_red / 100.
 
-            self.set_waypoint_velocity(i, min(velocity, 4))
+            self.set_waypoint_velocity(i, min(velocity, self.max_vel))
             wps.append(self.waypoints[i])
 
         lane = Lane()
@@ -101,7 +110,7 @@ class WaypointUpdater(object):
             wx = self.waypoints[wp_i].pose.pose.position.x
             wy = self.waypoints[wp_i].pose.pose.position.y
             wa = ((wx - cx) * math.cos(ct) +
-                  (wy - cy) * math.sin(ct)) > 0.0
+                  (wy - cy) * math.sin(ct)) > self.min_distance_ahead
 
             if not wa:
                 continue
