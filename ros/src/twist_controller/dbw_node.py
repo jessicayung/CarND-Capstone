@@ -156,7 +156,6 @@ class DBWNode(object):
             #    self.target_velocity.angular.z,
             #    self.current_velocity.linear.x)
             #self.publish(0.3, 0, math.degrees(steer))
-
             self.publish(throttle, brake, steer)
             rate.sleep()
 
