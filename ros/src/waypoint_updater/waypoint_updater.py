@@ -2,6 +2,7 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import TwistStamped
 from geometry_msgs.msg import Pose
 from std_msgs.msg import Int32
 from styx_msgs.msg import Lane, Waypoint
@@ -24,6 +25,7 @@ as well as to verify your TL classifier.
 '''
 
 LOOKAHEAD_WPS = 200 # Number of waypoints we will publish. You can change this number
+ONEMPH = 0.44704 # in mps
 
 class WaypointUpdater(object):
     def __init__(self):
@@ -31,6 +33,7 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
+        rospy.Subscriber("/current_velocity", TwistStamped, self.velocity_cb)
         rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
         rospy.Subscriber('/obstacle_waypoint', PoseStamped, self.obstacle_cb)
 
@@ -42,6 +45,9 @@ class WaypointUpdater(object):
         # Part of the complete waypoints retrived from /waypoints
         self.waypoints = None
 
+        #Velocity
+        self.current_velocity = None
+
         # Select the base waypoints ahead of the vehicle
         self.waypoints_ahead = []
 
@@ -51,7 +57,22 @@ class WaypointUpdater(object):
         # id of red light waypoint
         self.red_waypoint = -1
 
-        rospy.Timer(rospy.Duration(0.1), self.process_final_waypoints)
+        # Cycle time for the waypoint updater
+        self.dt = 0.1
+
+        #Maximum allowed velocity
+        self.max_vel = 10.0*ONEMPH
+
+        # Minimum distance to the waypoint ahead
+        self.min_distance_ahead = self.max_vel*self.dt
+
+        #Distance to traffic light waypoint
+        self.stop_distance_to_tl = 30.0
+
+        #Distance from the stop point where the car starts to decelerate
+        self.decelerating_distance = self.max_vel*10
+
+        rospy.Timer(rospy.Duration(self.dt), self.process_final_waypoints)
         rospy.spin()
 
     def process_final_waypoints(self, event):
@@ -60,9 +81,14 @@ class WaypointUpdater(object):
             rospy.logwarn('no pose has been set')
             return None
 
+        if not self.current_velocity:
+            rospy.logwarn('no velocity have been set')
+            return None
+
         if not self.waypoints:
             rospy.logwarn('no waypoints have been set')
             return None
+
 
         # get closest waypoint
         idx_begin = self.get_closest_waypoint_ahead()
@@ -70,22 +96,41 @@ class WaypointUpdater(object):
         idx_end = min(idx_end, len(self.waypoints))
 
         wps = []
+        epsilon = 1.0
+        min_velocity = 0.1
+        dist_to_red = 0
+        dist_to_stop = 0
+        velocity = 0
         for i in range(idx_begin, idx_end):
-            velocity = 4.
+            target_velocity = self.max_vel
 
             if self.red_waypoint > 0:
+                
                 dist_to_red = self.distance(i, self.red_waypoint)
-                if dist_to_red < 50.:
-                    velocity = 0.
-                elif dist_to_red < 100.:
-                    velocity *= dist_to_red / 100.
+                dist_to_stop = dist_to_red - self.stop_distance_to_tl
+                velocity = self.get_waypoint_velocity(i)
 
-            self.set_waypoint_velocity(i, min(velocity, 4))
+
+                if target_velocity > 0.0 and target_velocity <= min_velocity:
+                   target_velocity = min_velocity
+
+                if dist_to_stop > 0 and dist_to_stop < self.decelerating_distance:
+                    target_velocity *= dist_to_stop/self.decelerating_distance
+                elif dist_to_stop <= 0 and dist_to_stop < -dist_to_red/4.0:
+                    target_velocity = dist_to_stop/self.decelerating_distance
+
+
+            self.set_waypoint_velocity(i, min(target_velocity, self.max_vel))
             wps.append(self.waypoints[i])
 
         lane = Lane()
         lane.waypoints = wps
         self.final_waypoints_pub.publish(lane)
+
+        dr = self.distance(idx_begin, self.red_waypoint)
+        ds = dr - self.stop_distance_to_tl
+        vd = self.get_waypoint_velocity(idx_begin)/ONEMPH
+        rospy.logwarn("[Debug] => [idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
 
     def get_closest_waypoint_ahead(self):
 
@@ -101,7 +146,7 @@ class WaypointUpdater(object):
             wx = self.waypoints[wp_i].pose.pose.position.x
             wy = self.waypoints[wp_i].pose.pose.position.y
             wa = ((wx - cx) * math.cos(ct) +
-                  (wy - cy) * math.sin(ct)) > 0.0
+                  (wy - cy) * math.sin(ct)) > self.min_distance_ahead
 
             if not wa:
                 continue
@@ -125,8 +170,11 @@ class WaypointUpdater(object):
         # TODO: callback for /obstacle_waypoint message.
         pass
 
+    def velocity_cb(self, msg):
+        self.current_velocity = msg.twist
+
     def get_waypoint_velocity(self, waypoint):
-        return self.waypoints[i].twist.twist.linear.x
+        return self.waypoints[waypoint].twist.twist.linear.x
 
     def set_waypoint_velocity(self, waypoint, velocity):
         self.waypoints[waypoint].twist.twist.linear.x = velocity
