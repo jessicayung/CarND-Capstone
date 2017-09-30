@@ -74,15 +74,17 @@ class DBWNode(object):
                                             max_steer_angle)
 
         # def __init__(self, tau, ts):
-        self.filter = LowPassFilter(filter_tau, 0.8)
+        self.filter = LowPassFilter(filter_tau, 0.8) # hm why 0.8?
 
         # Pid controller for the target velocity (decel_limit is already negative)
         self.pid_vel = PID(Kp, Ki, Kd, decel_limit, accel_limit)
 
-        # self.controller = TwistController(<Arguments you wish to provide>)
         # write controller
         self.controller = Controller(self.yaw_controller, self.pid_vel, self.filter)
 
+        # set controller parameters
+        vehicle_mass_offset = 25.0 + 70.0 + 30.0 # additional weight (gas, passenger, load)
+        self.controller.set_vehicle_parameters(vehicle_mass, vehicle_mass_offset, brake_deadband, wheel_radius)
 
         self.current_velocity = None
         self.target_velocity = None
