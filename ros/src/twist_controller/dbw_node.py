@@ -51,8 +51,8 @@ class DBWNode(object):
         max_steer_angle = rospy.get_param('~max_steer_angle', 8.)
         min_speed = rospy.get_param('~min_speed', 0.1)
         Kp = rospy.get_param('~pid_kp', 1.1)
-        Ki = rospy.get_param('~pid_ki', 0.004)
-        Kd = rospy.get_param('~pid_kd', 0.5)
+        Ki = rospy.get_param('~pid_ki', 0.010)
+        Kd = rospy.get_param('~pid_kd', 0.005)
         pid_cmd_range = rospy.get_param('~pid_cmd_range', 4)
         filter_tau = rospy.get_param('~filter_tau', 0.0)
 
@@ -110,6 +110,7 @@ class DBWNode(object):
         
     def dbw_cb(self, msg):
         self.dbw_enabled = msg.data
+        rospy.loginfo('received dbw_enabled: %s', str(msg.data))
 
     def pose_cb(self, msg):
         self.pose = msg.pose
@@ -153,11 +154,6 @@ class DBWNode(object):
                angular_velocity=self.target_velocity.angular.z
             )
 
-            #steer = self.yaw_controller.get_steering(
-            #    self.target_velocity.linear.x,
-            #    self.target_velocity.angular.z,
-            #    self.current_velocity.linear.x)
-            #self.publish(0.3, 0, math.degrees(steer))
             self.publish(throttle, brake, steer)
             rate.sleep()
 
