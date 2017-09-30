@@ -68,13 +68,14 @@ class Controller(object):
                 # Alternatively use negative speed control
                 brake = - self.wheel_radius * self.vehicle_mass * cmd
             
-            if brake < self.brake_deadband:
+            # If braking effort is small then don't use wheel brakes
+            if cmd < self.brake_deadband:
                 # Car is currently still in the braking deadband, meaning that it is
                 # not required to brake (the torque by the engine is enough for braking)
                 brake = 0.0
             else:
-                # The car needs to be brake using wheel brakes.
-                brake = max(self.brake_deadband, brake)
+                # The car needs to brake using wheel brakes
+                brake = max(self.brake_deadband, brake - self.brake_deadband)
 
             # limit abs(cmd) to 0 and the negative lower limit of the pid controller
             # limiting brake to 1.0 would result in controller windup, since
