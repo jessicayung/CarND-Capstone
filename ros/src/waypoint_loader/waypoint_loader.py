@@ -50,7 +50,9 @@ class WaypointLoader(object):
                 p.pose.pose.position.x = float(wp['x'])
                 p.pose.pose.position.y = float(wp['y'])
                 p.pose.pose.position.z = float(wp['z'])
-                q = self.quaternion_from_yaw(float(wp['yaw']))
+                # convert radians back to degrees, see
+                # [Bugfix] #31 Convert degree to radius in simulator waypoint file
+                q = self.quaternion_from_yaw(float(wp['yaw']) * (180.0/math.pi))
                 p.pose.pose.orientation = Quaternion(*q)
                 p.twist.twist.linear.x = float(self.velocity)
 
