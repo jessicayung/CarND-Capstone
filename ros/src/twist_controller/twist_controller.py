@@ -66,24 +66,19 @@ class Controller(object):
                 self.pid_lin_vel.reset() # reset controller to prevent windup
             else:
                 # Alternatively use negative speed control
-                brake = - self.wheel_radius * self.vehicle_mass * cmd
+                brake = - self.wheel_radius * self.vehicle_mass * (cmd - self.brake_deadband)
             
             # If braking effort is small then don't use wheel brakes
-            if cmd < self.brake_deadband:
+            if math.fabs(cmd) < self.brake_deadband:
                 # Car is currently still in the braking deadband, meaning that it is
                 # not required to brake (the torque by the engine is enough for braking)
                 brake = 0.0
             else:
                 # The car needs to brake using wheel brakes
-                brake = max(self.brake_deadband, brake - self.brake_deadband)
-
-            # limit abs(cmd) to 0 and the negative lower limit of the pid controller
-            # limiting brake to 1.0 would result in controller windup, since
-            # pid_lin_vel.min can be > 1.0.
-            # brake = max(0, min(math.fabs(cmd), -self.pid_lin_vel.min))
+                pass
         
         # debug
-        if True: rospy.logwarn('T = %f, B = %f, S = %f (BAND: %f)', throttle, brake, steer, self.brake_deadband)
+        if True: rospy.logwarn('cmd = %.2f, T = %.2f, B = %.2f, S = %.2f (BAND: %.2f)', cmd, throttle, brake, steer, self.brake_deadband)
 
         # The correct values for brake can be computed using the desired acceleration, weight of the vehicle, and wheel radius.
         return throttle, brake, steer
