@@ -247,8 +247,20 @@ class TLDetector(object):
             if not l_ahead:
                 continue
 
+            # determine if light is facing car
+            l_o = l.pose.pose.orientation
+            l_q = (l_o.x, l_o.y, l_o.z, l_o.w)
+            _, _, l_w = tf.transformations.euler_from_quaternion(l_q)
+            # Try this from empirical observation
+            l_facing_car = l_w * c_w > 0
+
+            if not l_facing_car:
+                continue
+
             # calculate distance and store if closer than current
             l_d = math.sqrt((c_x - l_x)**2 + (c_y - l_y)**2)
+            #rospy.loginfo("Store light {} with distance {} and position {}, {}"
+                          .format(i, l_d, l_x, l_y))
             if l_d < l_wp[0]:
                 l_wp = l_d, self.get_closest_waypoint(l.pose.pose), l
 
