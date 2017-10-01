@@ -258,7 +258,7 @@ class TLDetector(object):
         c_o = self.pose.orientation
         c_q = (c_o.x, c_o.y, c_o.z, c_o.w)
         _, _, c_w = tf.transformations.euler_from_quaternion(c_q)
-        
+
         # find closest light ahead
         l_wp = (float('inf'), -1, None)
         for i in range(len(self.lights)):
@@ -273,7 +273,7 @@ class TLDetector(object):
             l_ahead = ((l_x - c_x) * math.cos(c_w) +
                        (l_y - c_y) * math.sin(c_w)) > 0
             if not l_ahead:
-                rospy.logdebug("light not ahead " + str(self.get_closest_waypoint(l.pose.pose)))            
+                rospy.logdebug("light not ahead " + str(self.get_closest_waypoint(l.pose.pose)))
                 continue
             rospy.logdebug("light ahead " + str(self.get_closest_waypoint(l.pose.pose)))
 
@@ -283,7 +283,7 @@ class TLDetector(object):
                 rospy.logdebug("light not facing " + str(self.get_closest_waypoint(l.pose.pose)))
                 continue
             rospy.logdebug("light facing " + str(self.get_closest_waypoint(l.pose.pose)))
-                
+
             # calculate distance and store if closer than current
             l_d = math.sqrt((c_x - l_x)**2 + (c_y - l_y)**2)
             rospy.logdebug("Store light {} with distance {} and position {}, {}".format(i, l_d, l_x, l_y))
@@ -301,7 +301,7 @@ class TLDetector(object):
             if s_d < s_wp[0]:
                 s_wp = (s_d, self.get_closest_stop_waypoint(stop_line))
 
-        rospy.logdebug("closest light is " + str(l_wp[1]))        
+        rospy.logdebug("closest light is " + str(l_wp[1]))
         rospy.logdebug("closest stop line is " + str(s_wp[1]))
         rospy.logdebug("light state is " + str(tl_state))
 

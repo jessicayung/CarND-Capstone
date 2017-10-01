@@ -107,7 +107,7 @@ class DBWNode(object):
         self.target_velocity = msg.twist
         self.vxd_pub.publish(self.target_velocity.linear.x)
         self.szd_pub.publish(self.target_velocity.angular.z)
-        
+
     def dbw_cb(self, msg):
         self.dbw_enabled = msg.data
         rospy.loginfo('received dbw_enabled: %s', str(msg.data))
@@ -147,7 +147,7 @@ class DBWNode(object):
                 self.controller.reset()
                 rate.sleep()
                 continue
-            
+
             throttle, brake, steer = self.controller.control(
                current_velocity=self.current_velocity.linear.x,
                linear_velocity=self.target_velocity.linear.x,

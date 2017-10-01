@@ -168,7 +168,7 @@ class TLClassifier(object):
         preds = self.model.predict(image)[0]
         prob_no, prob_red, prob_green = preds
         np.set_printoptions(precision=3, suppress=True)
-        rospy.logwarn("no, red, green {}".format(preds))
+        rospy.logdebug("no, red, green {}".format(preds))
         # neural network
         # 0:= No traffic light in driving direction
         # 1:= Red traffic light in driving direction
@@ -191,9 +191,9 @@ class TLClassifier(object):
         if prob_red > 0.20:
             strn = 'RED'
             state = TrafficLight.RED
-            
-        cv2.putText(d, strn, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
-        cv2.imshow("Camera stream", d)
-        cv2.waitKey(1)
+
+        #cv2.putText(d, strn, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255))
+        #cv2.imshow("Camera stream", d)
+        #cv2.waitKey(1)
 
         return state
