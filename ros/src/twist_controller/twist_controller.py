@@ -39,7 +39,6 @@ class Controller(object):
                 linear_velocity,
                 angular_velocity,
                 current_velocity)
-        steer = math.degrees(steer)
 
         #Compute the throttle command
         cmd = 0
@@ -78,7 +77,7 @@ class Controller(object):
                 pass
         
         # debug
-        if True: rospy.logwarn('cmd = %.2f, T = %.2f, B = %.2f, S = %.2f (BAND: %.2f)', cmd, throttle, brake, steer, self.brake_deadband)
+        rospy.logdebug('cmd = %.2f, T = %.2f, B = %.2f, S = %.2f (BAND: %.2f)', cmd, throttle, brake, steer, self.brake_deadband)
 
         # The correct values for brake can be computed using the desired acceleration, weight of the vehicle, and wheel radius.
         return throttle, brake, steer
