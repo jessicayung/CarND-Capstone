@@ -206,7 +206,7 @@ class TLDetector(object):
         """
         if not self.has_image or not light:
             self.prev_light_loc = None
-            rospy.logwarn("image {} and light {}".format(self.has_image, light))
+            rospy.logdebug("image {} and light {}".format(self.has_image, light))
             return TrafficLight.UNKNOWN
 
         # get image from msg into cv2
