@@ -94,7 +94,7 @@ class WaypointUpdater(object):
         idx_begin = self.get_closest_waypoint_ahead()
         idx_end = idx_begin + LOOKAHEAD_WPS
         idx_end = min(idx_end, len(self.waypoints))
-        rospy.logerr("begin {}, end {}, len {}".format(idx_begin, idx_end, len(self.waypoints)))
+        rospy.logdebug("begin {}, end {}, len {}".format(idx_begin, idx_end, len(self.waypoints)))
 
         wps = []
         epsilon = 1.0
@@ -131,7 +131,7 @@ class WaypointUpdater(object):
 
             # accelerate smoothly
             swv = self.get_waypoint_velocity(idx_begin)
-            ptv = swv if i == idx_begin else ptv            
+            ptv = swv if i == idx_begin else ptv
             cwv = self.get_waypoint_velocity(i)
 
             rospy.logdebug("{} = start v {}, current v {}, prev v {}, target v {}".format(i, swv, cwv, ptv, target_velocity))
@@ -149,6 +149,7 @@ class WaypointUpdater(object):
 
             # save previous waypoint target velocity
             ptv = target_velocity
+
 
             rospy.logdebug("waypoint {}, decelerating_dist {}, dist_to_red {}, "
                            "dist_to_stop {}, velocity {}, target_velocity {}".format(

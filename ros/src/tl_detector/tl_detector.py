@@ -301,12 +301,15 @@ class TLDetector(object):
             if s_d < s_wp[0]:
                 s_wp = (s_d, self.get_closest_stop_waypoint(stop_line))
 
-        rospy.logdebug("closest light is " + str(l_wp[1]))
-        rospy.logdebug("closest stop line is " + str(s_wp[1]))
-        rospy.logdebug("light state is " + str(tl_state))
+        # don't classify lights that are just too far away
+        rospy.logdebug("closest light is {} far and is {} waypoint".format(l_wp[0], l_wp[1]))
+        rospy.logdebug("closest stop line is {} far and is {} waypoint".format(s_wp[0], s_wp[1]))
+        if l_wp[0] > 50:
+            return idx, tl_state
 
         idx = s_wp[1]
         tl_state = self.get_light_state(l_wp[2])
+        rospy.logdebug("light state is " + str(tl_state))
 
         return idx, tl_state
 
