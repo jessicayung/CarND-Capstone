@@ -67,7 +67,7 @@ class WaypointUpdater(object):
         self.min_distance_ahead = self.max_vel*self.dt
 
         #Distance to traffic light waypoint
-        self.stop_distance_to_tl = 30.0
+        self.stop_distance_to_tl = 3.0
 
         #Distance from the stop point where the car starts to decelerate
         self.decelerating_distance = self.max_vel*10
@@ -119,6 +119,10 @@ class WaypointUpdater(object):
                 elif dist_to_stop <= 0 and dist_to_stop < -dist_to_red/4.0:
                     target_velocity = dist_to_stop/self.decelerating_distance
 
+            target_velocity = max(0, target_velocity)
+            if abs(target_velocity < 0.3):
+                target_velocity = 0
+            rospy.logdebug("target_velocity {}".format(target_velocity))
 
             self.set_waypoint_velocity(i, min(target_velocity, self.max_vel))
             wps.append(self.waypoints[i])
@@ -130,7 +134,7 @@ class WaypointUpdater(object):
         dr = self.distance(idx_begin, self.red_waypoint)
         ds = dr - self.stop_distance_to_tl
         vd = self.get_waypoint_velocity(idx_begin)/ONEMPH
-        rospy.logwarn("[Debug] => [idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
+        rospy.logwarn("[idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
 
     def get_closest_waypoint_ahead(self):
 
