@@ -170,7 +170,7 @@ class WaypointUpdater(object):
         dr = self.distance(idx_begin, self.red_waypoint)
         ds = max(0, dr - self.stop_distance_to_tl)
         vd = self.get_waypoint_velocity(idx_begin)
-        rospy.logwarn("[idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
+        rospy.logdebug("[idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
 
     def get_closest_waypoint_ahead(self):
 
