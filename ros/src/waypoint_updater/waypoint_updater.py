@@ -94,6 +94,7 @@ class WaypointUpdater(object):
         idx_begin = self.get_closest_waypoint_ahead()
         idx_end = idx_begin + LOOKAHEAD_WPS
         idx_end = min(idx_end, len(self.waypoints))
+        rospy.logerr("begin {}, end {}, len {}".format(idx_begin, idx_end, len(self.waypoints)))
 
         wps = []
         epsilon = 1.0
