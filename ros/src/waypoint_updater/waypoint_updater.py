@@ -67,10 +67,10 @@ class WaypointUpdater(object):
         self.min_distance_ahead = self.max_vel*self.dt
 
         #Distance to traffic light waypoint
-        self.stop_distance_to_tl = 3.0
+        self.stop_distance_to_tl = 2.0
 
         #Distance from the stop point where the car starts to decelerate
-        self.decelerating_distance = self.max_vel*10
+        self.decelerating_distance = self.max_vel*5
 
         rospy.Timer(rospy.Duration(self.dt), self.process_final_waypoints)
         rospy.spin()
@@ -97,34 +97,68 @@ class WaypointUpdater(object):
 
         wps = []
         epsilon = 1.0
-        min_velocity = 0.1
         dist_to_red = 0
         dist_to_stop = 0
         velocity = 0
+        ptv = 0
         for i in range(idx_begin, idx_end):
             target_velocity = self.max_vel
 
             if self.red_waypoint > 0:
-                
                 dist_to_red = self.distance(i, self.red_waypoint)
-                dist_to_stop = dist_to_red - self.stop_distance_to_tl
+                dist_to_stop = max(0, dist_to_red - self.stop_distance_to_tl)
                 velocity = self.get_waypoint_velocity(i)
 
-
-                if target_velocity > 0.0 and target_velocity <= min_velocity:
-                   target_velocity = min_velocity
-
+                # slow down getting closer to intersection
                 if dist_to_stop > 0 and dist_to_stop < self.decelerating_distance:
+                    target_velocity *= dist_to_red/self.decelerating_distance
+
+                # push down the brakes a bit harder second half
+                if dist_to_stop > 0 and dist_to_stop < self.decelerating_distance * .5:
                     target_velocity *= dist_to_stop/self.decelerating_distance
-                elif dist_to_stop <= 0 and dist_to_stop < -dist_to_red/4.0:
-                    target_velocity = dist_to_stop/self.decelerating_distance
 
-            target_velocity = max(0, target_velocity)
-            if abs(target_velocity < 0.3):
-                target_velocity = 0
-            rospy.logdebug("target_velocity {}".format(target_velocity))
+                # don't slow down so it doesn't make sense
+                target_velocity = max(2., target_velocity)
 
-            self.set_waypoint_velocity(i, min(target_velocity, self.max_vel))
+                # perform the brake motion
+                if dist_to_stop > 0.5 and dist_to_stop <= 2.:
+                    target_velocity = 1.0
+                if dist_to_stop > 0 and dist_to_stop <= 0.5:
+                    target_velocity = 0.33
+                elif dist_to_stop == 0:
+                    target_velocity = 0.
+
+            # accelerate smoothly
+            swv = self.get_waypoint_velocity(idx_begin)
+            ptv = swv if i == idx_begin else ptv            
+            cwv = self.get_waypoint_velocity(i)
+
+            rospy.logdebug("{} = start v {}, current v {}, prev v {}, target v {}".format(i, swv, cwv, ptv, target_velocity))
+            if swv == 0 and cwv == 0 and ptv == 0:
+                target_velocity = (0.25 * target_velocity + 0.75 * ptv)
+            elif ptv < target_velocity:
+                target_velocity = (0.1 * target_velocity + 0.9 * ptv)
+
+            # make higher velocities just be the highest
+            if target_velocity > 4.0:
+                target_velocity = self.max_vel
+
+            # clip around the velocities always greater than min and lesser than max
+            target_velocity = min(max(0, target_velocity), self.max_vel)
+
+            # save previous waypoint target velocity
+            ptv = target_velocity
+
+            rospy.logdebug("waypoint {}, decelerating_dist {}, dist_to_red {}, "
+                           "dist_to_stop {}, velocity {}, target_velocity {}".format(
+                               i,
+                               self.decelerating_distance,
+                               dist_to_red,
+                               dist_to_stop,
+                               velocity,
+                               target_velocity))
+
+            self.set_waypoint_velocity(i, target_velocity)
             wps.append(self.waypoints[i])
 
         lane = Lane()
@@ -132,9 +166,9 @@ class WaypointUpdater(object):
         self.final_waypoints_pub.publish(lane)
 
         dr = self.distance(idx_begin, self.red_waypoint)
-        ds = dr - self.stop_distance_to_tl
-        vd = self.get_waypoint_velocity(idx_begin)/ONEMPH
-        rospy.logdebug("[idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
+        ds = max(0, dr - self.stop_distance_to_tl)
+        vd = self.get_waypoint_velocity(idx_begin)
+        rospy.logwarn("[idx %s ] tl %s ds %s dr %s vd %s ", idx_begin, self.red_waypoint, ds, dr, vd)
 
     def get_closest_waypoint_ahead(self):
 
