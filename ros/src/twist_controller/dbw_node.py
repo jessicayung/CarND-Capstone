@@ -91,10 +91,10 @@ class DBWNode(object):
         self.dbw_enabled = True # maybe change to False by default
         self.pose = None
 
-        rospy.Subscriber("/current_velocity", TwistStamped, self.velocity_cb, queue_size=1)
-        rospy.Subscriber("/twist_cmd", TwistStamped, self.twist_cb, queue_size=1)
-        rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.dbw_cb, queue_size=1)
-        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb, queue_size=1)
+        rospy.Subscriber("/current_velocity", TwistStamped, self.velocity_cb)
+        rospy.Subscriber("/twist_cmd", TwistStamped, self.twist_cb)
+        rospy.Subscriber("/vehicle/dbw_enabled", Bool, self.dbw_cb)
+        rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
 
         self.loop()
 
