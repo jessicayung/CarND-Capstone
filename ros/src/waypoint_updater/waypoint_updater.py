@@ -67,7 +67,7 @@ class WaypointUpdater(object):
         self.min_distance_ahead = self.max_vel*self.dt
 
         #Distance to traffic light waypoint
-        self.stop_distance_to_tl = 5.0
+        self.stop_distance_to_tl = 7.0
 
         #Distance from the stop point where the car starts to decelerate
         self.decelerating_distance = self.max_vel*10
